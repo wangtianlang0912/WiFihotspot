@@ -395,7 +395,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 switch (wifiState) {
                     case WifiManager.WIFI_STATE_ENABLED:
                         //获取到wifi开启的广播时，开始扫描
-                        wifiManager.startScan();
+                        search();
                         break;
                     case WifiManager.WIFI_STATE_DISABLED:
                         //wifi关闭发出的广播
