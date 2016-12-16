@@ -41,6 +41,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -297,6 +298,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //开启wifi
             wifiManager.setWifiEnabled(true);
         }
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             wifiManager.startScan();
         } else {
@@ -383,6 +385,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.w("BBB", "SCAN_RESULTS_AVAILABLE_ACTION");
                 // wifi已成功扫描到可用wifi。
                 List<ScanResult> scanResults = wifiManager.getScanResults();
+                scanResults = filter(scanResults);
                 wifiListAdapter.clear();
                 wifiListAdapter.addAll(scanResults);
             } else if (action.equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
@@ -455,9 +458,58 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }*/
         }
+
+
+        private  List<ScanResult> filter(List<ScanResult> resultList){
+
+            if(resultList ==null) return null;
+            Iterator<ScanResult> iter = resultList.iterator();
+            while (iter.hasNext()) {
+                ScanResult result = iter.next();
+                if(TextUtils.isEmpty(result.SSID)){
+                   iter.remove();
+                }
+            }
+            return sortSSIDBySignalLevel(resultList);
+        }
     };
 
+    public List<ScanResult> sortSSIDBySignalLevel(List<ScanResult> resultList){
+        List<ScanResult> wifiScanResults = new ArrayList<ScanResult>();
+        int length = resultList.size();
+        for (int i = 0; i < length; i++) {
+            for (int j = 0; j < length - i - 1; j++) {
+                boolean is2Swaped = false;
+                int lvl1 = resultList.get(j).level;
+                lvl1 = WifiManager
+                        .calculateSignalLevel(lvl1, 7);
+                int lvl2 = resultList.get(j + 1).level;
+                lvl2 = WifiManager
+                        .calculateSignalLevel(lvl2, 7);
+                if (lvl1 < lvl2) {
+                    is2Swaped = true;
+                } else if (lvl1 == lvl2) {
 
+                    String str1 = resultList.get(j).SSID;
+                    String str2 = resultList.get(j + 1).SSID;
+                    if (str1 != null && str2 != null
+                            && str1.compareToIgnoreCase(str2) > 0) {
+                        is2Swaped = true;
+                    } else if (str1 != null && str2 == null) {
+                        is2Swaped = true;
+                    }
+                }
+                if (is2Swaped) {
+                    ScanResult temp = resultList.get(j);
+                    resultList.set(j, resultList.get(j + 1));
+                    resultList.set(j + 1, temp);
+                }
+            }
+        }
+        // key
+        wifiScanResults = resultList;
+        return wifiScanResults;
+    }
     /**
      * 判断当前wifi是否有保存
      *
