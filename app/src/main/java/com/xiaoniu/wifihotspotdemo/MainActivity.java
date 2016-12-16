@@ -1,16 +1,20 @@
 package com.xiaoniu.wifihotspotdemo;
 
+import android.Manifest;
+import android.annotation.TargetApi;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -24,6 +28,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.xiaoniu.wifihotspotdemo.adapter.WifiListAdapter;
 import com.xiaoniu.wifihotspotdemo.thread.ConnectThread;
@@ -52,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private WifiListAdapter wifiListAdapter;
     private WifiConfiguration config;
     private int wcgID;
-
+    final int REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS = 111;
     /**
      * 热点名称
      */
@@ -186,8 +191,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.btn_send:
                 if (connectThread != null) {
                     connectThread.sendData("这是来自Wifi热点的消息");
-                }else{
-                    Log.w("AAA","connectThread == null");
+                } else {
+                    Log.w("AAA", "connectThread == null");
                 }
                 break;
             case R.id.btn_search:
@@ -292,7 +297,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //开启wifi
             wifiManager.setWifiEnabled(true);
         }
-        wifiManager.startScan();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            wifiManager.startScan();
+        } else {
+            checkPermission();
+        }
+    }
+
+
+    @TargetApi(Build.VERSION_CODES.M)
+    private boolean checkPermission() {
+        Log.d("hello", "checkPermission");
+        List<String> permissionsList = new ArrayList<String>();
+        String[] permission = new String[2];
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            permission[0] = Manifest.permission.ACCESS_FINE_LOCATION;
+        }
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            permission[1] = Manifest.permission.ACCESS_COARSE_LOCATION;
+        }
+        if (permission[0] != null || permission[1] != null) {
+            Log.d("hello", "regist Permission");
+            requestPermissions(permission, REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults) {
+        Log.d("hello", "onRequestPermissionsResult");
+        switch (requestCode) {
+            case REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS:
+                if (permissions.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED ||
+                        (permissions.length == 2 && grantResults[0] == PackageManager.PERMISSION_GRANTED &&
+                                grantResults[1] == PackageManager.PERMISSION_GRANTED)) {
+                    wifiManager.startScan();
+                    //list is still empty
+                } else {
+                    // Permission Denied
+                    Toast.makeText(this, "permission deny", Toast.LENGTH_LONG).show();
+                    Log.d("hello", "permission deny");
+                }
+                break;
+        }
     }
 
     @Override
@@ -306,7 +356,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case DEVICE_CONNECTING:
-                    connectThread = new ConnectThread(listenerThread.getSocket(),handler);
+                    connectThread = new ConnectThread(listenerThread.getSocket(), handler);
                     connectThread.start();
                     break;
                 case DEVICE_CONNECTED:
@@ -357,7 +407,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
                     final WifiInfo wifiInfo = wifiManager.getConnectionInfo();
                     text_state.setText("已连接到网络:" + wifiInfo.getSSID());
-                    Log.w("AAA","wifiInfo.getSSID():"+wifiInfo.getSSID()+"  WIFI_HOTSPOT_SSID:"+WIFI_HOTSPOT_SSID);
+                    Log.w("AAA", "wifiInfo.getSSID():" + wifiInfo.getSSID() + "  WIFI_HOTSPOT_SSID:" + WIFI_HOTSPOT_SSID);
                     if (wifiInfo.getSSID().equals(WIFI_HOTSPOT_SSID)) {
                         //如果当前连接到的wifi是热点,则开启连接线程
                         new Thread(new Runnable() {
@@ -406,7 +456,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }*/
         }
     };
-
 
 
     /**
